@@ -6,9 +6,9 @@ import pandas as pd
 from typing import NewType
 
 class Individual:
-    def __init__(self, path: list[list[int]]):
+    def __init__(self, path: np.array):
         self.path = np.array(path)
-
+        
     def produceOffspring(self, other: 'Individual') -> 'Individual':
         # Assuming single-point crossover for simplicity
         crossover_points = np.random.randint(1, len(self.path) - 1, size = (1,2))
@@ -80,18 +80,18 @@ class Path:
             raise Exception(f"No city exists at ({x},{y}).")
 
     
-    def getScore(self,path: list[list[int]]) -> float:
+    def getScore(self,path: np.array) -> float:
         if len(path) != len(self.cities):
             raise Exception(f"Path length ({len(path)}) is not the same length as the total number of cities ({len(self.cities)})")
         else:
             # Should theoretically check that the path is a valid path, but for efficiency this is not 
             print(path)
-            distance = np.linalg.norm(np.subtract(path[1:][:],path[:len(path)-1][:]), axis=1)
+            distance: list[float] = np.linalg.norm(np.subtract(path[1:][:],path[:len(path)-1][:]), axis=1)
             total = np.sum(distance)
 
             return total
     
-    def getCityOrder(self,path: list[list[int]]):
+    def getCityOrder(self,path: np.array):
         if len(path) != len(self.cities):
             raise Exception(f"Path length ({len(path)}) is not the same length as the total number of cities ({len(self.cities)})")
         cityPath:list[int] = []
