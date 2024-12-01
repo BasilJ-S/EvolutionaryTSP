@@ -14,45 +14,47 @@ class Individual:
         crossover_points = np.random.randint(1, len(self.path) - 1, size = (1,2))
         crossover_point1 = np.min(crossover_points)
         crossover_point2 = np.max(crossover_points)
+        if crossover_point1 != crossover_point2:
 
-        # We will cross over the interval of the other into the interval of the self
-        intervalReplaced = self.path[crossover_point1:crossover_point2]
-        intervalReplacing = other.path[crossover_point1:crossover_point2]
+            # We will cross over the interval of the other into the interval of the self
+            intervalReplaced = self.path[crossover_point1:crossover_point2]
+            intervalReplacing = other.path[crossover_point1:crossover_point2]
 
-        # Convert lists to numpy arrays
-        intervalReplaced = np.array(intervalReplaced)
-        intervalReplacing = np.array(intervalReplacing)
-        
-        # logical array, true if an element of first argument is NOT in the second argument
-        missingInNewIndividual = np.isin(intervalReplaced, intervalReplacing, invert=True)
-        # If it is in the replaced array but not the replacing array, we will lose a city and not visit all cities
-        # i.e. we need to add these cities to the new individual (outside of the range)
-        toBeAdded = intervalReplaced[missingInNewIndividual]
+            # Convert lists to numpy arrays
+            intervalReplaced = np.array(intervalReplaced)
+            intervalReplacing = np.array(intervalReplacing)
+            
+            # logical array, true if an element of first argument is NOT in the second argument
+            #missingInNewIndividual = np.isin(intervalReplaced, intervalReplacing, invert=True)
+            missingInNewIndividual = np.invert((intervalReplaced[:, None] == intervalReplacing).all(-1).any(-1))
 
-        extraInNewIndividual = np.isin(intervalReplacing,intervalReplaced, invert=True)
-        # If it is in the replacing array, but not the replaced array, we have duplicates of that element
-        # i.e. we need to remove these cities from the new individual (outside of the range)
-        toBeReplaced = intervalReplacing[extraInNewIndividual]
+            # If it is in the replaced array but not the replacing array, we will lose a city and not visit all cities
+            # i.e. we need to add these cities to the new individual (outside of the range)
+            toBeAdded = intervalReplaced[missingInNewIndividual]
 
-        if len(toBeAdded) != len(toBeReplaced):
-            raise Exception("Length of duplicates in new individual not equal to length of missing values in new individual.")
-        
-        #print(toBeAdded)
-        #print(toBeReplaced)
-        # Create new individual path with potential errors
-        newIndividualPath = np.concatenate((self.path[:crossover_point1], other.path[crossover_point1:crossover_point2], self.path[crossover_point2:]))
-        #print(newIndividualPath)
-        # Find locations where we can put in missing values
-        maskOfReplacePoints = np.isin(self.path,toBeReplaced)
-        #print(maskOfReplacePoints)
-        # Inset missing values
-        newIndividualPath[maskOfReplacePoints] = toBeAdded
-        #print(newIndividualPath)
-        
-        return Individual([])  
+            extraInNewIndividual = np.invert((intervalReplacing[:, None] == intervalReplaced).all(-1).any(-1))
+            # If it is in the replacing array, but not the replaced array, we have duplicates of that element
+            # i.e. we need to remove these cities from the new individual (outside of the range)
+            toBeReplaced = intervalReplacing[extraInNewIndividual]
+
+            if len(toBeAdded) != len(toBeReplaced):
+                print(crossover_points)
+                raise Exception("Length of duplicates in new individual not equal to length of missing values in new individual.")
+            
+            # Create new individual path with potential errors
+            newIndividualPath = np.concatenate((self.path[:crossover_point1], other.path[crossover_point1:crossover_point2], self.path[crossover_point2:]))
+            #print(newIndividualPath)
+            # Find locations where we can put in missing values
+            maskOfReplacePoints = ((self.path[:, None] == toBeReplaced).all(-1).any(-1))
+            #print(maskOfReplacePoints)
+            # Inset missing values
+            newIndividualPath[maskOfReplacePoints] = toBeAdded
+            #print(newIndividualPath)
+            
+            return Individual(newIndividualPath)  
+        else:
+            return self
     
-     
-
 # Class to hold information about a path and calculate useful results from a given path
 class Path:
     def __init__(self, x: list[float], y:list[int]):
@@ -123,6 +125,33 @@ class Path:
 
         return individuals
 
+class Population:
+    def __init__(self, individuals: list[Individual]):
+        self.individuals = individuals
+        self.populationSize = len(self.individuals)
+    
+    
+    def getNewPopulation(self,path: Path) -> 'Population':
+        fitness = path.getScores(self.individuals)
+        bestScore = np.max(fitness)
+        print(bestScore)
+        scoreSum = np.sum(fitness)
+
+        probOfReproducing: list[float] = np.divide(fitness,scoreSum)
+        population: list[int] = range(self.populationSize)
+        
+        randomNumberGenerator = np.random.default_rng()
+        newPopulation: list[Individual] = []
+
+        for i in range(self.populationSize):
+            mates = randomNumberGenerator.choice(population,(1,2),True,probOfReproducing)
+            print(mates[0][0])
+            newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]])
+            newPopulation.append(newIndividual)
+
+        return newPopulation   
+        
+
 
 
 if __name__ == "__main__":
@@ -147,10 +176,9 @@ if __name__ == "__main__":
 
     ind3 = ind.produceOffspring(ind2)
 
-    individuals = path.generateRandomPopulation(10)
+    population = Population(path.generateRandomPopulation(10))
 
-    print(path.getScores(individuals))
-
+    population.getNewPopulation(path)
 
 
 
