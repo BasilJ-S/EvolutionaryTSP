@@ -51,7 +51,7 @@ class Individual:
             newIndividualPath[maskOfReplacePoints] = toBeAdded
             #print(newIndividualPath)
 
-            if np.random.rand() > 0.995:
+            if np.random.rand() > 0.9:
                 middle: int = int(np.floor(len(newIndividualPath)/2))
                 newIndividualPath = np.concatenate((newIndividualPath[middle:], newIndividualPath[:middle]))
             
@@ -152,8 +152,10 @@ class Population:
         
         randomNumberGenerator = np.random.default_rng()
         newPopulation: list[Individual] = []
+        # Keep the best individual no matter what
+        newPopulation.append(self.individuals[bestIndividual])
 
-        for i in range(self.populationSize):
+        for i in range(self.populationSize - 1):
             mates = randomNumberGenerator.choice(population,(1,2),True,probOfReproducing)
             newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]])
             newPopulation.append(newIndividual)
@@ -187,31 +189,37 @@ if __name__ == "__main__":
 
     print("PROPER TRIALS")
 
-    population = Population(path.generateRandomPopulation(10))
+    population = Population(path.generateRandomPopulation(50))
     bestIndividual: Individual = None
     bestScores = []
-    for i in range(10000):
-        try:
-            population, bestScore, bestIndividual = population.getNewPopulation(path)
-            bestScores.append(bestScore)
-        except:
-            print("NO DIVERSITY")
-            break
-    
     import matplotlib.pyplot as plt
 
     fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+    plt.ion()
 
-    axs[0].plot(bestScores)
-    axs[0].set_xlabel('Iteration')
-    axs[0].set_ylabel('Best Score')
-    axs[0].set_title('Best Score by Iteration')
+    for i in range(30000):
+        try:
+            population, bestScore, bestIndividual = population.getNewPopulation(path)
+            bestScores.append(bestScore)
+            
+            if i % 100 == 0:  # Update plot every 100 iterations
+                axs[0].cla()
+                axs[0].plot(bestScores)
+                axs[0].set_xlabel('Iteration')
+                axs[0].set_ylabel('Best Score')
+                axs[0].set_title('Best Score by Iteration')
 
-    axs[1].scatter(path.cities[:,0], path.cities[:,1])
-    axs[1].plot(bestIndividual.path[:, 0], bestIndividual.path[:, 1])
-    axs[1].set_title('Best Path')
+                axs[1].cla()
+                axs[1].scatter(path.cities[:,0], path.cities[:,1])
+                axs[1].plot(bestIndividual.path[:, 0], bestIndividual.path[:, 1])
+                axs[1].set_title('Best Path')
 
-    plt.tight_layout()
+                plt.pause(0.01)
+        except:
+            print("NO DIVERSITY")
+            break
+
+    plt.ioff()
     plt.show()
 
 
