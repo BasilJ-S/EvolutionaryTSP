@@ -90,8 +90,15 @@ class Path:
             total = np.sum(distance)
 
             return total
-    
-    def getCityOrder(self,path: np.array):
+        
+    def getScores(self,individuals: list[Individual]) -> float:
+        scores: list[float] = []
+        for ind in individuals:
+            scores.append(self.getScore(ind.path))
+
+        return scores
+            
+    def getCityOrder(self,path: np.array) -> list[int]:
         if len(path) != len(self.cities):
             raise Exception(f"Path length ({len(path)}) is not the same length as the total number of cities ({len(self.cities)})")
         cityPath:list[int] = []
@@ -101,6 +108,21 @@ class Path:
             except:
                 raise Exception(f"City at ({path[i][0]},{path[i][1]}) does not exist.")
         return cityPath
+    
+    def generateRandomIndividual(self, randomNumberGenerator: np.random) -> Individual:
+        shuffled = np.copy(self.cities)
+        randomNumberGenerator.shuffle(shuffled, axis = 0)
+        #print(shuffled)
+        return Individual(shuffled)
+    
+    def generateRandomPopulation(self,populationSize: int) -> list[Individual]:
+        randomNumberGenerator = np.random.default_rng()
+        individuals: list[Individual] = []
+        for i in range(populationSize):
+            individuals.append(self.generateRandomIndividual(randomNumberGenerator))
+
+        return individuals
+
 
 
 if __name__ == "__main__":
@@ -112,7 +134,7 @@ if __name__ == "__main__":
     print(x.getCityOrder(possiblePath))
 
     # READ IN FILE
-    file = pd.read_csv('./ch130.tsp', skiprows=6, names = ['city','x','y'], delimiter=' ')
+    file = pd.read_csv('./ch130.tsp', skiprows=6, names = ['city','x','y'], delimiter=' ', skipfooter=1)
     file = file
     print(file.head(10))
     x_coords = file['x'].tolist()
@@ -124,6 +146,10 @@ if __name__ == "__main__":
     ind2 = Individual([[1,1],[4,4],[2,2], [6,6],[5,5],[3,3]])
 
     ind3 = ind.produceOffspring(ind2)
+
+    individuals = path.generateRandomPopulation(10)
+
+    print(path.getScores(individuals))
 
 
 
