@@ -50,6 +50,10 @@ class Individual:
             # Inset missing values
             newIndividualPath[maskOfReplacePoints] = toBeAdded
             #print(newIndividualPath)
+
+            if np.random.rand() > 0.995:
+                middle: int = int(np.floor(len(newIndividualPath)/2))
+                newIndividualPath = np.concatenate((newIndividualPath[middle:], newIndividualPath[:middle]))
             
             return Individual(newIndividualPath)  
         else:
@@ -130,10 +134,17 @@ class Population:
         self.individuals = individuals
         self.populationSize = len(self.individuals)
     
-    
-    def getNewPopulation(self, path: Path) -> tuple['Population', float]:
+    # Return new population, along with the best score and best individual from the current population
+    def getNewPopulation(self, path: Path) -> tuple['Population', float, Individual]:
         fitness = path.getScores(self.individuals)
-        bestScore = np.max(fitness)
+        bestIndividual = np.argmin(fitness)
+        worstScore = np.max(fitness)
+        bestScore = fitness[bestIndividual]
+
+        fitness = np.abs(np.divide(np.subtract(fitness,worstScore),worstScore - bestScore))
+        print(fitness)
+        print("-----")
+
         scoreSum = np.sum(fitness)
 
         probOfReproducing: list[float] = np.divide(fitness,scoreSum)
@@ -147,7 +158,7 @@ class Population:
             newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]])
             newPopulation.append(newIndividual)
 
-        return Population(newPopulation), bestScore   
+        return Population(newPopulation), bestScore, self.individuals[bestIndividual]
         
 
 
@@ -177,19 +188,35 @@ if __name__ == "__main__":
     print("PROPER TRIALS")
 
     population = Population(path.generateRandomPopulation(10))
-    
+    bestIndividual: Individual = None
     bestScores = []
-    for i in range(200):
-        population, bestScore = population.getNewPopulation(path)
-        bestScores.append(bestScore)
+    for i in range(10000):
+        try:
+            population, bestScore, bestIndividual = population.getNewPopulation(path)
+            bestScores.append(bestScore)
+        except:
+            print("NO DIVERSITY")
+            break
     
     import matplotlib.pyplot as plt
 
-    plt.plot(bestScores)
-    plt.xlabel('Iteration')
-    plt.ylabel('Best Score')
-    plt.title('Best Score by Iteration')
+    fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+
+    axs[0].plot(bestScores)
+    axs[0].set_xlabel('Iteration')
+    axs[0].set_ylabel('Best Score')
+    axs[0].set_title('Best Score by Iteration')
+
+    axs[1].scatter(path.cities[:,0], path.cities[:,1])
+    axs[1].plot(bestIndividual.path[:, 0], bestIndividual.path[:, 1])
+    axs[1].set_title('Best Path')
+
+    plt.tight_layout()
     plt.show()
+
+
+
+    
 
 
 
