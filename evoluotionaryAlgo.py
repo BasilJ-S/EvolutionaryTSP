@@ -87,7 +87,7 @@ class Path:
             raise Exception(f"Path length ({len(path)}) is not the same length as the total number of cities ({len(self.cities)})")
         else:
             # Should theoretically check that the path is a valid path, but for efficiency this is not 
-            print(path)
+            #print(path)
             distance: list[float] = np.linalg.norm(np.subtract(path[1:][:],path[:len(path)-1][:]), axis=1)
             total = np.sum(distance)
 
@@ -131,10 +131,9 @@ class Population:
         self.populationSize = len(self.individuals)
     
     
-    def getNewPopulation(self,path: Path) -> 'Population':
+    def getNewPopulation(self, path: Path) -> tuple['Population', float]:
         fitness = path.getScores(self.individuals)
         bestScore = np.max(fitness)
-        print(bestScore)
         scoreSum = np.sum(fitness)
 
         probOfReproducing: list[float] = np.divide(fitness,scoreSum)
@@ -145,11 +144,10 @@ class Population:
 
         for i in range(self.populationSize):
             mates = randomNumberGenerator.choice(population,(1,2),True,probOfReproducing)
-            print(mates[0][0])
             newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]])
             newPopulation.append(newIndividual)
 
-        return newPopulation   
+        return Population(newPopulation), bestScore   
         
 
 
@@ -176,9 +174,22 @@ if __name__ == "__main__":
 
     ind3 = ind.produceOffspring(ind2)
 
-    population = Population(path.generateRandomPopulation(10))
+    print("PROPER TRIALS")
 
-    population.getNewPopulation(path)
+    population = Population(path.generateRandomPopulation(10))
+    
+    bestScores = []
+    for i in range(200):
+        population, bestScore = population.getNewPopulation(path)
+        bestScores.append(bestScore)
+    
+    import matplotlib.pyplot as plt
+
+    plt.plot(bestScores)
+    plt.xlabel('Iteration')
+    plt.ylabel('Best Score')
+    plt.title('Best Score by Iteration')
+    plt.show()
 
 
 
