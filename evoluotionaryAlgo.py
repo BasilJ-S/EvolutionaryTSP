@@ -3,14 +3,55 @@
 # Code to implement evolutionary algorithm.
 import numpy as np
 import pandas as pd
+from typing import NewType
 
 class Individual:
-    def __init__(self, path, performance):
-        self.path = path
+    def __init__(self, path: list[list[int]]):
+        self.path = np.array(path)
 
+    def produceOffspring(self, other: 'Individual') -> 'Individual':
+        # Assuming single-point crossover for simplicity
+        crossover_points = np.random.randint(1, len(self.path) - 1, size = (1,2))
+        crossover_point1 = np.min(crossover_points)
+        crossover_point2 = np.max(crossover_points)
+
+        # We will cross over the interval of the other into the interval of the self
+        intervalReplaced = self.path[crossover_point1:crossover_point2]
+        intervalReplacing = other.path[crossover_point1:crossover_point2]
+
+        # Convert lists to numpy arrays
+        intervalReplaced = np.array(intervalReplaced)
+        intervalReplacing = np.array(intervalReplacing)
+        
+        # logical array, true if an element of first argument is NOT in the second argument
+        missingInNewIndividual = np.isin(intervalReplaced, intervalReplacing, invert=True)
+        # If it is in the replaced array but not the replacing array, we will lose a city and not visit all cities
+        # i.e. we need to add these cities to the new individual (outside of the range)
+        toBeAdded = intervalReplaced[missingInNewIndividual]
+
+        extraInNewIndividual = np.isin(intervalReplacing,intervalReplaced, invert=True)
+        # If it is in the replacing array, but not the replaced array, we have duplicates of that element
+        # i.e. we need to remove these cities from the new individual (outside of the range)
+        toBeReplaced = intervalReplacing[extraInNewIndividual]
+
+        if len(toBeAdded) != len(toBeReplaced):
+            raise Exception("Length of duplicates in new individual not equal to length of missing values in new individual.")
+        
+        #print(toBeAdded)
+        #print(toBeReplaced)
+        # Create new individual path with potential errors
+        newIndividualPath = np.concatenate((self.path[:crossover_point1], other.path[crossover_point1:crossover_point2], self.path[crossover_point2:]))
+        #print(newIndividualPath)
+        # Find locations where we can put in missing values
+        maskOfReplacePoints = np.isin(self.path,toBeReplaced)
+        #print(maskOfReplacePoints)
+        # Inset missing values
+        newIndividualPath[maskOfReplacePoints] = toBeAdded
+        #print(newIndividualPath)
+        
+        return Individual([])  
     
-    #def __calcPerformance(path):
-        #for i,(x,y) 
+     
 
 # Class to hold information about a path and calculate useful results from a given path
 class Path:
@@ -77,6 +118,12 @@ if __name__ == "__main__":
     x_coords = file['x'].tolist()
     y_coords = file['y'].tolist()
     path = Path(x_coords, y_coords) 
+
+
+    ind = Individual([[1,1],[3,3],[2,2],[4,4],[5,5],[6,6]])
+    ind2 = Individual([[1,1],[4,4],[2,2], [6,6],[5,5],[3,3]])
+
+    ind3 = ind.produceOffspring(ind2)
 
 
 
