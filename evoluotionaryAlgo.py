@@ -142,9 +142,9 @@ class Population:
         bestScore = fitness[bestIndividual]
 
         fitness = np.square(np.abs(np.divide(np.subtract(fitness,worstScore),worstScore - bestScore)))
-        print(fitness)
-        print(bestIndividual)
-        print("-----")
+        #print(fitness)
+        #print(bestIndividual)
+        #print("-----")
 
         scoreSum = np.sum(fitness)
 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
 
     print("PROPER TRIALS")
 
-    population = Population(path.generateRandomPopulation(50))
+    population = Population(path.generateRandomPopulation(75))
     bestIndividual: Individual = None
     bestScores = []
     import matplotlib.pyplot as plt
@@ -202,6 +202,7 @@ if __name__ == "__main__":
         try:
             population, bestScore, bestIndividual = population.getNewPopulation(path)
             bestScores.append(bestScore)
+            print(f"Iteration {i}: Best Score = {bestScore:.2f}")
             
             if i % 100 == 0:  # Update plot every 100 iterations
                 axs[0].cla()
