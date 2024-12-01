@@ -51,7 +51,7 @@ class Individual:
             newIndividualPath[maskOfReplacePoints] = toBeAdded
             #print(newIndividualPath)
 
-            if np.random.rand() > 0.9:
+            if np.random.rand() > 0.8:
                 middle: int = int(np.floor(len(newIndividualPath)/2))
                 newIndividualPath = np.concatenate((newIndividualPath[middle:], newIndividualPath[:middle]))
             
@@ -141,8 +141,9 @@ class Population:
         worstScore = np.max(fitness)
         bestScore = fitness[bestIndividual]
 
-        fitness = np.abs(np.divide(np.subtract(fitness,worstScore),worstScore - bestScore))
+        fitness = np.square(np.abs(np.divide(np.subtract(fitness,worstScore),worstScore - bestScore)))
         print(fitness)
+        print(bestIndividual)
         print("-----")
 
         scoreSum = np.sum(fitness)
