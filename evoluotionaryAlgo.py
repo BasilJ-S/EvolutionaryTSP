@@ -9,7 +9,7 @@ class Individual:
     def __init__(self, path: np.array):
         self.path = np.array(path)
         
-    def produceOffspring(self, other: 'Individual') -> 'Individual':
+    def produceOffspring(self, other: 'Individual', mutationProb = 0.95) -> 'Individual':
         # Assuming single-point crossover for simplicity
         crossover_points = np.random.randint(1, len(self.path) - 1, size = (1,2))
         crossover_point1 = np.min(crossover_points)
@@ -51,9 +51,9 @@ class Individual:
             newIndividualPath[maskOfReplacePoints] = toBeAdded
             #print(newIndividualPath)
 
-            if np.random.rand() > 0.8:
-                middle: int = int(np.floor(len(newIndividualPath)/2))
-                newIndividualPath = np.concatenate((newIndividualPath[middle:], newIndividualPath[:middle]))
+            if np.random.rand() > mutationProb:
+                crossover_point: int = np.random.randint(1, len(newIndividualPath) - 1)
+                newIndividualPath = np.concatenate((newIndividualPath[crossover_point:], newIndividualPath[:crossover_point]))
             
             return Individual(newIndividualPath)  
         else:
@@ -93,6 +93,9 @@ class Path:
             # Should theoretically check that the path is a valid path, but for efficiency this is not 
             #print(path)
             distance: list[float] = np.linalg.norm(np.subtract(path[1:][:],path[:len(path)-1][:]), axis=1)
+            #add distance between first and last city
+            distance = np.append(distance,np.linalg.norm(np.subtract(path[0],path[len(path)-1])))
+
             total = np.sum(distance)
 
             return total
@@ -162,6 +165,149 @@ class Population:
             newPopulation.append(newIndividual)
 
         return Population(newPopulation), bestScore, self.individuals[bestIndividual]
+    
+
+    # Return new population, using the normal method, but with a changing mutation probabiltity
+    def getNewPopulationRandomness(self, path: Path, iteration: int) -> tuple['Population', float, Individual]:
+        fitness = path.getScores(self.individuals)
+        bestIndividual = np.argmin(fitness)
+        worstScore = np.max(fitness)
+        bestScore = fitness[bestIndividual]
+        randomNumberGenerator = np.random.default_rng()
+
+        unrandomness = min(-0.1 * np.exp(-iteration/5000)*np.sin((iteration + 800)/200) + 0.9, 0.93)
+
+        randomChange = np.abs(randomNumberGenerator.normal(0,max(0.5*(0.9-unrandomness), 0),self.populationSize))
+        #print(randomChange)
+
+        fitness = np.square(np.abs(np.divide(np.subtract(fitness,worstScore),worstScore - bestScore)))
+        #print(fitness, "BEFORE", unrandomness)
+        fitness = np.add(fitness,randomChange)
+        #print(fitness)
+        #print(fitness)
+        #print(bestIndividual)
+        #print("-----")
+        print(unrandomness)
+
+        scoreSum = np.sum(fitness)
+
+        probOfReproducing: list[float] = np.divide(fitness,scoreSum)
+        population: list[int] = range(self.populationSize)
+        
+        newPopulation: list[Individual] = []
+        # Keep the best individual no matter what
+        newPopulation.append(self.individuals[bestIndividual])
+
+        for i in range(self.populationSize - 1):
+
+            mates = randomNumberGenerator.choice(population,(1,2),True,probOfReproducing)
+            newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]], unrandomness)
+            newPopulation.append(newIndividual)
+
+        return Population(newPopulation), bestScore, self.individuals[bestIndividual]
+    
+    # Give new population, and have the best individual reproduce with multipe individuals
+    def getNewPopulationExtraBest(self, path: Path) -> tuple['Population', float, Individual]:
+        fitness = path.getScores(self.individuals)
+        bestIndividual = np.argmin(fitness)
+        worstScore = np.max(fitness)
+        bestScore = fitness[bestIndividual]
+
+        fitness = np.square(np.abs(np.divide(np.subtract(fitness,worstScore),worstScore - bestScore)))
+        #print(fitness)
+        #print(bestIndividual)
+        #print("-----")
+
+        scoreSum = np.sum(fitness)
+
+        probOfReproducing: list[float] = np.divide(fitness,scoreSum)
+        population: list[int] = range(self.populationSize)
+        
+        randomNumberGenerator = np.random.default_rng()
+        newPopulation: list[Individual] = []
+        # Keep the best individual no matter what
+        newPopulation.append(self.individuals[bestIndividual])
+
+        for i in range(3):
+            mates = randomNumberGenerator.choice(population,p = probOfReproducing)
+            newIndividual = self.individuals[mates].produceOffspring(self.individuals[bestIndividual])
+            newPopulation.append(newIndividual)
+
+        for i in range(self.populationSize - 4):
+            mates = randomNumberGenerator.choice(population,(1,2),True,probOfReproducing)
+            newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]])
+            newPopulation.append(newIndividual)
+
+        return Population(newPopulation), bestScore, self.individuals[bestIndividual]
+    
+    # Return new population, along with the best score and best individual from the current population
+    def getNewPopulationNoSave(self, path: Path) -> tuple['Population', float, Individual]:
+        fitness = path.getScores(self.individuals)
+        bestIndividual = np.argmin(fitness)
+        worstScore = np.max(fitness)
+        bestScore = fitness[bestIndividual]
+
+        fitness = np.square(np.abs(np.divide(np.subtract(fitness,worstScore),worstScore - bestScore)))
+        #print(fitness)
+        #print(bestIndividual)
+        #print("-----")
+
+        scoreSum = np.sum(fitness)
+
+        probOfReproducing: list[float] = np.divide(fitness,scoreSum)
+        population: list[int] = range(self.populationSize)
+        
+        randomNumberGenerator = np.random.default_rng()
+        newPopulation: list[Individual] = []
+        # Keep the best individual no matter what
+
+        for i in range(self.populationSize):
+            mates = randomNumberGenerator.choice(population,(1,2),True,probOfReproducing)
+            newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]])
+            newPopulation.append(newIndividual)
+
+        return Population(newPopulation), bestScore, self.individuals[bestIndividual]
+    
+    # Return new population, not using fitness to determine who will reproduce, but saving the best individual
+    def getNewPopulationRandomSelection(self, path: Path) -> tuple['Population', float, Individual]:
+        fitness = path.getScores(self.individuals)
+        bestIndividual = np.argmin(fitness)
+        bestScore = fitness[bestIndividual]
+
+
+        population: list[int] = range(self.populationSize)
+        
+        randomNumberGenerator = np.random.default_rng()
+        newPopulation: list[Individual] = []
+        # Keep the best individual no matter what
+        newPopulation.append(self.individuals[bestIndividual])
+        for i in range(self.populationSize - 1):
+            mates = randomNumberGenerator.choice(population,(1,2),True,None)
+            newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]])
+            newPopulation.append(newIndividual)
+
+        return Population(newPopulation), bestScore, self.individuals[bestIndividual]
+    
+    # Return new population, not saving the individual with the best performance and not using fitness to determine who will reproduce
+    def getNewPopulationRandomSelectionNoSave(self, path: Path) -> tuple['Population', float, Individual]:
+        fitness = path.getScores(self.individuals)
+        bestIndividual = np.argmin(fitness)
+        bestScore = fitness[bestIndividual]
+
+
+        population: list[int] = range(self.populationSize)
+        
+        randomNumberGenerator = np.random.default_rng()
+        newPopulation: list[Individual] = []
+        # Keep the best individual no matter what
+        for i in range(self.populationSize):
+            mates = randomNumberGenerator.choice(population,(1,2),True,None)
+            newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]])
+            newPopulation.append(newIndividual)
+
+        return Population(newPopulation), bestScore, self.individuals[bestIndividual]
+    
+
         
 
 
@@ -190,7 +336,8 @@ if __name__ == "__main__":
 
     print("PROPER TRIALS")
 
-    population = Population(path.generateRandomPopulation(75))
+    population = Population(path.generateRandomPopulation(100))
+    bestIndividuals = []
     bestIndividual: Individual = None
     bestScores = []
     import matplotlib.pyplot as plt
@@ -198,31 +345,45 @@ if __name__ == "__main__":
     fig, axs = plt.subplots(1, 2, figsize=(12, 6))
     plt.ion()
 
-    for i in range(30000):
-        try:
-            population, bestScore, bestIndividual = population.getNewPopulation(path)
-            bestScores.append(bestScore)
-            print(f"Iteration {i}: Best Score = {bestScore:.2f}")
-            
-            if i % 100 == 0:  # Update plot every 100 iterations
-                axs[0].cla()
-                axs[0].plot(bestScores)
-                axs[0].set_xlabel('Iteration')
-                axs[0].set_ylabel('Best Score')
-                axs[0].set_title('Best Score by Iteration')
-
-                axs[1].cla()
-                axs[1].scatter(path.cities[:,0], path.cities[:,1])
-                axs[1].plot(bestIndividual.path[:, 0], bestIndividual.path[:, 1])
-                axs[1].set_title('Best Path')
-
-                plt.pause(0.01)
-        except:
-            print("NO DIVERSITY")
+    for i in range(10000):
+        #try:
+        population, bestScore, bestIndividual = population.getNewPopulation(path)
+        bestScores.append(bestScore)
+        bestIndividuals.append(bestIndividual.path)
+        print(f"Iteration {i}: Best Score = {bestScore:.2f}")
+        if bestScore < 6500:
             break
+        
+        if i % 100 == 0:  # Update plot every 100 iterations
+            axs[0].cla()
+            axs[0].plot(bestScores)
+            axs[0].set_xlabel('Iteration')
+            axs[0].set_ylabel('Best Score')
+            axs[0].set_title('Best Score by Iteration')
+
+            axs[1].cla()
+            axs[1].scatter(path.cities[:,0], path.cities[:,1])
+            axs[1].scatter(bestIndividual.path[0, 0], bestIndividual.path[0, 1], color='red')
+            axs[1].scatter(bestIndividual.path[-1, 0], bestIndividual.path[-1, 1], color='red')
+            axs[1].plot(bestIndividual.path[:, 0], bestIndividual.path[:, 1])
+            axs[1].set_title('Best Path')
+
+            plt.pause(0.01)
+        #except:
+            #print("NO DIVERSITY")
+            #break
 
     plt.ioff()
     plt.show()
+
+    bestScores = pd.DataFrame(bestScores, columns = ['Best Score'])
+    bestScores['Individual'] = bestIndividuals
+    # record date and time of run
+    import datetime
+    now = datetime.datetime.now()
+
+
+    bestScores.to_csv(f'./bestScores_base_nosave_{now.date()}_{now.time()}.csv')
 
 
 
