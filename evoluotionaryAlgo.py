@@ -364,8 +364,8 @@ def runAblation(path: Path):
             plt.savefig(f'./{time}/figures/bestScores_p{prob}_s{size}.png')
             plt.close()
 
-            trialResults.to_csv(f'./{time}/trialResults.csv')
-            bestScores.to_csv(f'./{time}/bestScores_p{prob}_s{size}.csv')
+            trialResults.to_csv(f'./Results/{time}/trialResults.csv')
+            bestScores.to_csv(f'./Results/{time}/bestScores_p{prob}_s{size}.csv')
     exit(0)
         
 
@@ -444,7 +444,7 @@ if __name__ == "__main__":
     now = datetime.datetime.now()
 
 
-    bestScores.to_csv(f'./bestScores_base_nosave_{now.date()}_{now.time()}.csv')
+    bestScores.to_csv(f'./Results/bestScores_base_nosave_{now.date()}_{now.time()}.csv')
 
 
 
