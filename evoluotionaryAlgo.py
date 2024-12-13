@@ -4,6 +4,11 @@
 import numpy as np
 import pandas as pd
 from typing import NewType
+from tqdm import tqdm
+import datetime
+import os
+import matplotlib.pyplot as plt
+
 
 class Individual:
     def __init__(self, path: np.array):
@@ -138,7 +143,7 @@ class Population:
         self.populationSize = len(self.individuals)
     
     # Return new population, along with the best score and best individual from the current population
-    def getNewPopulation(self, path: Path) -> tuple['Population', float, Individual]:
+    def getNewPopulation(self, path: Path, mutationProb = 0.9) -> tuple['Population', float, Individual]:
         fitness = path.getScores(self.individuals)
         bestIndividual = np.argmin(fitness)
         worstScore = np.max(fitness)
@@ -161,7 +166,7 @@ class Population:
 
         for i in range(self.populationSize - 1):
             mates = randomNumberGenerator.choice(population,(1,2),True,probOfReproducing)
-            newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]])
+            newIndividual = self.individuals[mates[0][0]].produceOffspring(self.individuals[mates[0][1]], mutationProb)
             newPopulation.append(newIndividual)
 
         return Population(newPopulation), bestScore, self.individuals[bestIndividual]
@@ -307,7 +312,61 @@ class Population:
 
         return Population(newPopulation), bestScore, self.individuals[bestIndividual]
     
+def runAblation(path: Path):
+    probOfErrors = [0.99,0.95, 0.9, 0.8, 0.7, 0.5, 0.3, 0.1, 0]
+    populationSize = [ 10, 20, 40, 50, 100, 300, 500]
+    now = datetime.datetime.now()
+    time = f'./{now.date()}_{now.time()}'
+    trialResults = pd.DataFrame(columns = ['Prob of Errors', 'Population Size', 'Best Score', 'Survived Trials'])
+    os.mkdir(time)
+    os.mkdir(f'./{time}/figures')
+    for prob in tqdm(probOfErrors):
+        for size in tqdm(populationSize):
+            population = Population(path.generateRandomPopulation(size))
+            bestIndividuals = []
+            bestIndividual: Individual = None
+            bestScores = []
+            survivedTrials = 0
+    
+            for i in range(8000):
+                try:
+                    #print(i)
+                    population, bestScore, bestIndividual = population.getNewPopulation(path, prob)
+                    bestScores.append(bestScore)
+                    bestIndividuals.append(bestIndividual.path)
+                    survivedTrials = i
+                    if bestScore < 6500:
+                        break
+                
+                except:
+                    print("NO DIVERSITY")
+                    break
 
+            bestScores = pd.DataFrame(bestScores, columns = ['Best Score'])
+            bestScores['Individual'] = bestIndividuals
+            # record date and time of run
+            trialResults = pd.concat([trialResults, pd.DataFrame([{'Prob of Errors': prob, 'Population Size': size, 'Best Score': bestScore, 'Survived Trials': survivedTrials}])], ignore_index=True)
+
+            fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+            axs[0].cla()
+            axs[0].plot(bestScores['Best Score'])
+            axs[0].set_xlabel('Iteration')
+            axs[0].set_ylabel('Best Score')
+            axs[0].set_title('Best Score by Iteration')
+
+            axs[1].cla()
+            axs[1].scatter(path.cities[:,0], path.cities[:,1])
+            axs[1].scatter(bestIndividual.path[0, 0], bestIndividual.path[0, 1], color='red')
+            axs[1].scatter(bestIndividual.path[-1, 0], bestIndividual.path[-1, 1], color='red')
+            axs[1].plot(bestIndividual.path[:, 0], bestIndividual.path[:, 1])
+            axs[1].set_title('Best Path')
+
+            plt.savefig(f'./{time}/figures/bestScores_p{prob}_s{size}.png')
+            plt.close()
+
+            trialResults.to_csv(f'./{time}/trialResults.csv')
+            bestScores.to_csv(f'./{time}/bestScores_p{prob}_s{size}.csv')
+    exit(0)
         
 
 
@@ -335,19 +394,21 @@ if __name__ == "__main__":
     ind3 = ind.produceOffspring(ind2)
 
     print("PROPER TRIALS")
+    # Uncomment to run ablation on the algorithm
+    #runAblation(path)
 
     population = Population(path.generateRandomPopulation(100))
     bestIndividuals = []
     bestIndividual: Individual = None
     bestScores = []
-    import matplotlib.pyplot as plt
+    
 
     fig, axs = plt.subplots(1, 2, figsize=(12, 6))
     plt.ion()
 
     for i in range(10000):
         #try:
-        population, bestScore, bestIndividual = population.getNewPopulation(path)
+        population, bestScore, bestIndividual = population.getNewPopulation(path, 0.99)
         bestScores.append(bestScore)
         bestIndividuals.append(bestIndividual.path)
         print(f"Iteration {i}: Best Score = {bestScore:.2f}")
